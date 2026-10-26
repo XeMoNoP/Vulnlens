@@ -1,8 +1,0 @@
-# VULN-008 (A02: Security Misconfiguration)
-# Disable directory listing so the contents of the uploads folder cannot be
-# enumerated, and prevent any uploaded file from being executed as a script.
-Options -Indexes
-php_flag engine off
-<FilesMatch "\.(php|phtml|php3|php4|php5|phar|cgi|pl)$">
-    Require all denied
-</FilesMatch>
