@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         if (data.user.role === 'admin') {
-          router.push('/vulnlens');
+          router.push('/admin');
           router.refresh();
         } else {
           setError('Access Denied: Account lacks administrative privileges.');
@@ -49,9 +49,9 @@ export default function AdminLoginPage() {
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3">
             <Shield className="w-6 h-6" />
           </div>
-          <h1 className="text-xl font-bold">VulnLens Security Console</h1>
+          <h1 className="text-xl font-bold">Supervisor Admin Sign In</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Supervisor Administration & OWASP Testing Access
+            Sign in to manage catalog, inventory, and system security mode.
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export default function AdminLoginPage() {
             disabled={loading}
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
           >
-            <span>{loading ? 'Verifying Credentials...' : 'Authenticate to Console'}</span>
+            <span>{loading ? 'Verifying Credentials...' : 'Sign In as Admin'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

@@ -2,28 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   Package,
   Layers,
   FileText,
-  Shield,
   Plus,
   Trash2,
   AlertCircle,
   CheckCircle2,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
-import { Product, Order, AuditLog } from '@/lib/types';
+import { Product, Order, AuditLog, SecurityMode } from '@/lib/types';
 
 export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'logs'>('products');
+  const [securityMode, setSecurityMode] = useState<SecurityMode>('SECURE');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [toggling, setToggling] = useState(false);
 
   // New product form modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -48,6 +50,12 @@ export default function AdminPage() {
         return;
       }
 
+      const modeRes = await fetch('/api/vulnlens/mode');
+      if (modeRes.ok) {
+        const modeData = await modeRes.json();
+        setSecurityMode(modeData.mode);
+      }
+
       if (activeTab === 'products') {
         const res = await fetch('/api/products');
         const data = await res.json();
@@ -65,6 +73,29 @@ export default function AdminPage() {
       setError('Could not load administrative data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleSecurityMode = async () => {
+    const nextMode: SecurityMode = securityMode === 'SECURE' ? 'LAB' : 'SECURE';
+    setToggling(true);
+    try {
+      const res = await fetch('/api/vulnlens/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: nextMode }),
+      });
+      if (res.ok) {
+        setSecurityMode(nextMode);
+        setSuccess(`Switched to ${nextMode} MODE successfully!`);
+        setTimeout(() => setSuccess(''), 3500);
+      } else {
+        setError('Failed to switch security mode.');
+      }
+    } catch {
+      setError('Network communication error.');
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -127,7 +158,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Top Header */}
+      {/* Top Header with Mode Switch Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Supervisor Admin Panel</h1>
@@ -136,13 +167,38 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <Link
-          href="/vulnlens"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-emerald-400 rounded-lg text-xs font-bold shadow-sm transition-all"
-        >
-          <Shield className="w-4 h-4 text-emerald-400" />
-          <span>Open VulnLens Security Console &rarr;</span>
-        </Link>
+        {/* Clean Single Button to Switch Between LAB and SECURE */}
+        <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-sm shrink-0">
+          <div className="text-left pl-2 pr-1">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block leading-none">Current Mode</span>
+            <span className={`text-xs font-black ${securityMode === 'LAB' ? 'text-amber-600' : 'text-emerald-700'}`}>
+              {securityMode === 'LAB' ? 'LAB MODE (Vulnerable)' : 'SECURE MODE (Protected)'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleSecurityMode}
+            disabled={toggling}
+            className={`px-4 py-2.5 rounded-lg text-xs font-black flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 ${
+              securityMode === 'LAB'
+                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+            }`}
+          >
+            {securityMode === 'LAB' ? (
+              <>
+                <ShieldAlert className="w-4 h-4 shrink-0 text-slate-950" />
+                <span>{toggling ? 'Switching...' : 'Switch to SECURE Mode'}</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4 shrink-0 text-white" />
+                <span>{toggling ? 'Switching...' : 'Switch to LAB Mode'}</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {success && (
