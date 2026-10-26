@@ -4,8 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Check, AlertCircle, Sparkles } from 'lucide-react';
-import { Product, Category } from '@/lib/types';
+import { ShoppingCart, Check, AlertCircle, Sparkles, Bug } from 'lucide-react';
+import { Product, Category, SecurityMode } from '@/lib/types';
 
 function CatalogContent() {
   const searchParams = useSearchParams();
@@ -14,9 +14,12 @@ function CatalogContent() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [securityMode, setSecurityMode] = useState<SecurityMode>('SECURE');
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [sqliExploited, setSqliExploited] = useState(false);
+  const [injectedQuery, setInjectedQuery] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -24,6 +27,7 @@ function CatalogContent() {
 
   const fetchProducts = async () => {
     setLoading(true);
+    setSqliExploited(false);
     try {
       const url = new URL('/api/products', window.location.origin);
       if (q) url.searchParams.set('q', q);
@@ -34,6 +38,11 @@ function CatalogContent() {
         const data = await res.json();
         setProducts(data.products || []);
         setCategories(data.categories || []);
+        if (data.securityMode) setSecurityMode(data.securityMode);
+        if (data.sqli_detected) {
+          setSqliExploited(true);
+          setInjectedQuery(data.injected_query);
+        }
       }
     } catch {
       // ignore
@@ -104,12 +113,49 @@ function CatalogContent() {
         </div>
       </div>
 
-      {/* Results Header (VULN-002: Safely rendered via React contextual encoding) */}
+      {/* SQL Injection Exploit Alert in LAB MODE */}
+      {sqliExploited && (
+        <div className="p-4 bg-red-950/90 text-red-100 border border-red-700 rounded-xl mb-6 text-xs space-y-1">
+          <div className="flex items-center gap-2 font-bold text-red-300">
+            <Bug className="w-4 h-4 text-red-400" />
+            <span>[LAB MODE] VULN-001 SQL Injection Triggered!</span>
+          </div>
+          <p className="font-mono text-[11px] text-red-200">
+            Interpolated Query: <code className="bg-red-900/60 px-1 py-0.5 rounded">{injectedQuery}</code>
+          </p>
+          <p className="text-[11px] text-slate-300">
+            The SQL syntax broke query encapsulation, returning the entire inventory table!
+          </p>
+        </div>
+      )}
+
+      {/* Results Header (VULN-002: Reflected XSS Dual-Mode) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">
-            {currentCategoryObj ? currentCategoryObj.name : q ? `Search results for "${q}"` : 'All Groceries'}
-          </h2>
+          {q ? (
+            <div>
+              {securityMode === 'LAB' ? (
+                /* VULNERABLE LAB MODE: Dangerously renders unsanitized HTML */
+                <h2 className="text-xl font-bold text-slate-800 flex items-baseline gap-2">
+                  <span>Search results for </span>
+                  <span
+                    className="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200"
+                    dangerouslySetInnerHTML={{ __html: q }}
+                  />
+                  <span className="text-[10px] text-red-600 font-mono">[LAB XSS ACTIVE]</span>
+                </h2>
+              ) : (
+                /* SECURE MODE: Contextually escaped JSX string */
+                <h2 className="text-xl font-bold text-slate-800">
+                  Search results for &quot;{q}&quot;
+                </h2>
+              )}
+            </div>
+          ) : (
+            <h2 className="text-xl font-bold text-slate-800">
+              {currentCategoryObj ? currentCategoryObj.name : 'All Groceries'}
+            </h2>
+          )}
           <p className="text-xs text-slate-500">
             Showing {products.length} {products.length === 1 ? 'item' : 'items'} available for delivery
           </p>
@@ -155,7 +201,6 @@ function CatalogContent() {
               >
                 {/* Product Card Top */}
                 <div className="p-4">
-                  {/* Category Pill & Discount Badge */}
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-[120px]">
                       {p.category_name}
@@ -167,7 +212,6 @@ function CatalogContent() {
                     )}
                   </div>
 
-                  {/* Image */}
                   <Link href={`/product/${p.id}`} className="block relative w-full h-40 my-2 overflow-hidden rounded-lg bg-slate-50">
                     <Image
                       src={p.image && p.image !== 'placeholder.png' ? `/images/${p.image}` : '/images/basmati_rice.png'}
@@ -178,7 +222,6 @@ function CatalogContent() {
                     />
                   </Link>
 
-                  {/* Title & Description */}
                   <Link href={`/product/${p.id}`} className="block group-hover:text-emerald-700 transition-colors">
                     <h3 className="font-bold text-xs md:text-sm text-slate-800 line-clamp-2 leading-snug">
                       {p.name}
@@ -202,7 +245,6 @@ function CatalogContent() {
                     )}
                   </div>
 
-                  {/* Stock status */}
                   <div className="text-[11px] mb-3">
                     {p.stock > 0 ? (
                       <span className="text-emerald-700 font-semibold">In Stock ({p.stock} units)</span>

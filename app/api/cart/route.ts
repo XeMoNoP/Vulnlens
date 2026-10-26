@@ -11,6 +11,7 @@ export async function GET() {
     items: cart,
     subtotal,
     count: cart.reduce((acc, curr) => acc + curr.quantity, 0),
+    securityMode: db.getSecurityMode(),
   });
 }
 
@@ -18,23 +19,35 @@ export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
     const body = await request.json();
+    const mode = db.getSecurityMode();
     const productId = Number(body.productId);
-    const quantity = Number(body.quantity) || 1;
+    const quantity = Number(body.quantity);
 
-    // Security boundary: VULN-006 Parameter Tampering prevention
-    if (!productId || isNaN(productId) || quantity <= 0 || !Number.isInteger(quantity)) {
-      return NextResponse.json(
-        { error: 'Invalid quantity. Value must be a positive integer.' },
-        { status: 400 }
-      );
+    // VULN-006 Parameter Tampering: Dual Mode
+    if (mode === 'SECURE') {
+      // SECURE MODE: Strict positive integer constraint and stock bounds check
+      if (!productId || isNaN(productId) || isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+        return NextResponse.json(
+          { error: 'Invalid quantity. Value must be a positive integer.' },
+          { status: 400 }
+        );
+      }
+
+      const result = db.addToCart(productId, quantity, user?.id);
+      if (!result.success) {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+    } else {
+      // VULNERABLE LAB MODE: Parameter validation disabled!
+      // Allows negative quantities (-5) or unbounded numbers exceeding inventory!
+      const prod = db.getProductById(productId);
+      if (!prod) return NextResponse.json({ error: 'Product not found.' }, { status: 400 });
+
+      // Direct addition without stock or positive checks
+      db.addToCart(productId, quantity, user?.id);
     }
 
-    const result = db.addToCart(productId, quantity, user?.id);
-    if (!result.success) {
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, securityMode: mode });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Cart error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });
@@ -45,19 +58,25 @@ export async function PUT(request: Request) {
   try {
     const user = await getCurrentUser();
     const body = await request.json();
+    const mode = db.getSecurityMode();
     const productId = Number(body.productId);
     const quantity = Number(body.quantity);
 
-    if (!productId || isNaN(productId) || isNaN(quantity)) {
-      return NextResponse.json({ error: 'Invalid parameters.' }, { status: 400 });
+    if (mode === 'SECURE') {
+      if (!productId || isNaN(productId) || isNaN(quantity)) {
+        return NextResponse.json({ error: 'Invalid parameters.' }, { status: 400 });
+      }
+
+      const result = db.updateCartQuantity(productId, quantity, user?.id);
+      if (!result.success) {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+    } else {
+      // LAB MODE: Parameter tampering allowed!
+      db.updateCartQuantity(productId, quantity, user?.id);
     }
 
-    const result = db.updateCartQuantity(productId, quantity, user?.id);
-    if (!result.success) {
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, securityMode: mode });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Cart error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });

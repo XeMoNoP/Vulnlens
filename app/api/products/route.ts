@@ -6,13 +6,49 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q') || undefined;
   const category = searchParams.get('category') || undefined;
+  const mode = db.getSecurityMode();
 
-  const products = db.getProducts(q, category);
+  let products = db.getProducts(q, category);
+
+  // VULN-001: SQL Injection vulnerability simulation in LAB mode
+  if (mode === 'LAB' && q) {
+    const rawQ = q.trim();
+    // Detect classic SQL injection payload triggers
+    const sqliTriggers = [
+      "' OR '1'='1",
+      "' OR 1=1",
+      "' or '1'='1",
+      "' or 1=1",
+      "' UNION",
+      "' union",
+      "'--",
+      "admin'--",
+    ];
+
+    const isSqli = sqliTriggers.some((trigger) => rawQ.includes(trigger));
+    if (isSqli) {
+      // In LAB mode: SQL injection successfully bypasses query constraints, dumping entire catalog + mock secret item
+      products = db.getProducts(); // returns everything
+      const headers = new Headers();
+      headers.set('X-Vulnerable-Query', `SELECT * FROM products WHERE name LIKE '%${rawQ}%'`);
+      headers.set('X-Security-Mode', 'LAB_VULNERABLE');
+      return NextResponse.json(
+        {
+          products,
+          categories: db.getCategories(),
+          sqli_detected: true,
+          injected_query: `SELECT * FROM products WHERE name LIKE '%${rawQ}%'`,
+        },
+        { headers }
+      );
+    }
+  }
+
   const categories = db.getCategories();
-
   return NextResponse.json({
     products,
     categories,
+    securityMode: mode,
   });
 }
 

@@ -13,7 +13,11 @@ import {
   Settings,
   ShieldCheck,
   ChevronDown,
+  ToggleLeft,
+  ToggleRight,
+  FlaskConical,
 } from 'lucide-react';
+import { SecurityMode } from '@/lib/types';
 
 interface NavUser {
   id: number;
@@ -27,11 +31,12 @@ export default function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<NavUser | null>(null);
-  const [securityMode, setSecurityMode] = useState<'SECURE' | 'LAB'>('SECURE');
+  const [securityMode, setSecurityMode] = useState<SecurityMode>('SECURE');
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [showPincodeModal, setShowPincodeModal] = useState(false);
   const [pincode, setPincode] = useState('400001');
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     fetchSession();
@@ -66,6 +71,26 @@ export default function Navbar() {
     }
   };
 
+  const handleToggleMode = async (targetMode: SecurityMode) => {
+    setToggling(true);
+    try {
+      const res = await fetch('/api/vulnlens/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: targetMode }),
+      });
+      if (res.ok) {
+        setSecurityMode(targetMode);
+        router.refresh();
+        window.location.reload();
+      }
+    } catch {
+      alert('Error changing security mode');
+    } finally {
+      setToggling(false);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
@@ -96,14 +121,45 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
-      {/* LAB Mode Warning Banner */}
-      {securityMode === 'LAB' && (
-        <div className="bg-amber-500 text-slate-900 px-4 py-1.5 text-xs font-bold text-center flex items-center justify-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-slate-950" />
-          <span>SECURITY LAB MODE ACTIVE — Input validation, CSRF protections, and exception sanitization are relaxed for testing.</span>
-          <Link href="/vulnlens" className="underline font-extrabold hover:text-black">
-            Manage in Console &rarr;
-          </Link>
+      {/* Simulation Banner */}
+      {securityMode === 'LAB' ? (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-3 shadow-md border-b border-amber-600">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
+            <span>
+              <strong>LAB SIMULATION ACTIVE:</strong> All OWASP Top 10 vulnerabilities (SQLi, XSS, IDOR, Weak Auth, CSRF, Tampering) are currently live and exploitable!
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/vulnlens"
+              className="px-2.5 py-1 bg-slate-950 text-emerald-400 rounded text-[11px] font-black hover:bg-slate-900 transition-colors"
+            >
+              Scan in Console &rarr;
+            </Link>
+            <button
+              onClick={() => handleToggleMode('SECURE')}
+              disabled={toggling}
+              className="px-2.5 py-1 bg-white text-slate-900 rounded text-[11px] font-black hover:bg-slate-100 shadow-sm transition-all"
+            >
+              {toggling ? 'Switching...' : 'Switch to SECURE Mode'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-emerald-950 text-emerald-300 px-4 py-1 text-[11px] font-semibold flex items-center justify-between border-b border-emerald-900">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>SECURE BASELINE: All OWASP Top 10 defenses and mitigations are actively enforced.</span>
+          </div>
+          <button
+            onClick={() => handleToggleMode('LAB')}
+            disabled={toggling}
+            className="flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:text-amber-200 underline"
+          >
+            <FlaskConical className="w-3 h-3 text-amber-400" />
+            <span>{toggling ? 'Enabling...' : 'Activate Lab Vulnerabilities Simulation'}</span>
+          </button>
         </div>
       )}
 
@@ -142,7 +198,7 @@ export default function Navbar() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search for groceries, rice, oil, tea..."
+              placeholder="Search groceries (e.g. rice, or test `' OR '1'='1` in Lab mode)..."
               className="w-full bg-slate-50 border border-slate-200 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all text-slate-800 placeholder-slate-400"
             />
             <button
@@ -155,16 +211,14 @@ export default function Navbar() {
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* VulnLens Console Button (for Admin) */}
-            {user?.role === 'admin' && (
-              <Link
-                href="/vulnlens"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-emerald-400 text-xs font-bold rounded-lg hover:bg-slate-800 shadow-sm transition-all"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>VulnLens</span>
-              </Link>
-            )}
+            {/* VulnLens Console Button */}
+            <Link
+              href="/vulnlens"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-emerald-400 text-xs font-bold rounded-lg hover:bg-slate-800 shadow-sm transition-all"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>VulnLens</span>
+            </Link>
 
             {/* Admin Management Panel */}
             {user?.role === 'admin' && (

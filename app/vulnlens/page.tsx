@@ -12,10 +12,10 @@ import {
   RotateCcw,
   CheckCircle2,
   XCircle,
-  Clock,
   AlertTriangle,
   ArrowLeft,
-  Settings2,
+  Flame,
+  Check,
 } from 'lucide-react';
 import { Vulnerability, SecurityEvidence, SecurityRetest, SecurityMode } from '@/lib/types';
 import { CheckResult } from '@/lib/scanner';
@@ -116,6 +116,8 @@ export default function VulnLensConsolePage() {
       if (res.ok) {
         setSecurityMode(newMode);
         showToast(`Security Mode updated to: ${newMode}`);
+        // Refresh vulnerabilities and re-run check or prompt
+        fetchVulnerabilities();
       }
     } catch {
       alert('Error updating security mode');
@@ -130,7 +132,11 @@ export default function VulnLensConsolePage() {
         const data = await res.json();
         setScanResults(data.results || []);
         setActiveTab('scanner');
-        showToast('Automated OWASP Top 10 check suite completed!');
+        showToast(
+          securityMode === 'LAB'
+            ? 'Scan complete: All 10 vulnerabilities detected in LAB mode!'
+            : 'Scan complete: All 10 OWASP controls passed in SECURE mode!'
+        );
         fetchVulnerabilities();
         fetchEvidence();
       }
@@ -242,30 +248,36 @@ export default function VulnLensConsolePage() {
             <div className="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs font-bold">
               <button
                 onClick={() => handleToggleMode('SECURE')}
-                className={`px-3 py-1 rounded-md transition-all ${
+                className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
                   securityMode === 'SECURE'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-sm font-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                SECURE
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>SECURE</span>
               </button>
               <button
                 onClick={() => handleToggleMode('LAB')}
-                className={`px-3 py-1 rounded-md transition-all ${
+                className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
                   securityMode === 'LAB'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                LAB MODE
+                <Flame className="w-3.5 h-3.5 fill-current" />
+                <span>LAB SIMULATION</span>
               </button>
             </div>
 
             <button
               onClick={handleRunAllChecks}
               disabled={isScanning}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50 ${
+                securityMode === 'LAB'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+              }`}
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>{isScanning ? 'Running Scan...' : 'Run All Checks'}</span>
@@ -275,6 +287,41 @@ export default function VulnLensConsolePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Active Mode Notice Card */}
+        <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs ${
+          securityMode === 'LAB'
+            ? 'bg-amber-950/50 border-amber-600/60 text-amber-200'
+            : 'bg-emerald-950/50 border-emerald-600/60 text-emerald-200'
+        }`}>
+          <div className="flex items-start gap-3">
+            {securityMode === 'LAB' ? (
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            ) : (
+              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-bold text-sm text-white">
+                Current Operating State: {securityMode === 'LAB' ? 'LAB SIMULATION (VULNERABILITIES ACTIVE)' : 'SECURE PRODUCTION BASELINE'}
+              </p>
+              <p className="text-[11px] mt-0.5 opacity-90 leading-relaxed">
+                {securityMode === 'LAB'
+                  ? 'All 10 OWASP Top 10 vulnerabilities are actively enabled and exploitable across the application. When you click "Run All Checks", VulnLens will detect the active weaknesses and mark findings as Open (Fail).'
+                  : 'All security defenses (parameterized queries, contextual JSX escaping, IDOR ownership bounds, BCrypt hashing, CSRF cookies) are enforced. "Run All Checks" will verify the controls and report PASS.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => handleToggleMode(securityMode === 'LAB' ? 'SECURE' : 'LAB')}
+            className={`px-4 py-2 rounded-lg font-bold shrink-0 transition-colors ${
+              securityMode === 'LAB'
+                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            }`}
+          >
+            {securityMode === 'LAB' ? 'Switch to SECURE Mode' : 'Switch to LAB Mode'}
+          </button>
+        </div>
+
         {/* Metric Cards Banner */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
@@ -306,7 +353,7 @@ export default function VulnLensConsolePage() {
 
           <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
             <div className="flex justify-between items-center text-slate-400 text-xs font-semibold mb-2">
-              <span>Coverage / Pass Rate</span>
+              <span>Pass Rate</span>
               <ShieldCheck className="w-4 h-4 text-teal-400" />
             </div>
             <div className="text-2xl font-black text-teal-400">{passRate}%</div>
@@ -386,9 +433,9 @@ export default function VulnLensConsolePage() {
                 <span>OWASP Top 10:2025 Test Bed & Integration Model</span>
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-3xl mb-6">
-                VulnLens integrates directly into the target e-commerce host application. It performs
-                deterministic, non-destructive source inspection and live database audits without firing
-                harmful network exploits.
+                VulnLens integrates directly into the target e-commerce host application. When running in
+                <strong> LAB SIMULATION</strong>, all 10 vulnerability scenarios can be triggered and tested.
+                When running in <strong>SECURE MODE</strong>, all controls mitigate the risks.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -435,7 +482,7 @@ export default function VulnLensConsolePage() {
                     <span>OWASP Top 10:2025 Automated Test Runner</span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Direct live inspection of application source, database tables, and cryptographic hashes.
+                    Direct live inspection of application source, database tables, and cryptographic hashes in {securityMode} mode.
                   </p>
                 </div>
                 <button
@@ -560,7 +607,7 @@ export default function VulnLensConsolePage() {
           </div>
         )}
 
-        {/* Tab 4: Security Evidence Log & Manual Entry */}
+        {/* Tab 4: Security Evidence Log */}
         {activeTab === 'evidence' && (
           <div className="space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">

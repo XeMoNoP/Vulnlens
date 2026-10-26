@@ -51,15 +51,30 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function setSessionCookie(user: User) {
+  const mode = db.getSecurityMode();
   const token = createSessionToken(user);
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    path: '/',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
+
+  // VULN-005: Dual Mode CSRF Protection
+  if (mode === 'SECURE') {
+    // SECURE MODE: Strict SameSite and HttpOnly
+    cookieStore.set(COOKIE_NAME, token, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+  } else {
+    // VULNERABLE LAB MODE: SameSite relaxed or omitted, allowing cross-site forged requests
+    cookieStore.set(COOKIE_NAME, token, {
+      path: '/',
+      httpOnly: false, // script-readable for XSS theft
+      secure: false,
+      sameSite: 'none',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  }
 }
 
 export async function clearSessionCookie() {
