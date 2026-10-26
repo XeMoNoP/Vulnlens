@@ -1,15 +1,17 @@
 <?php
 // DMART CyberLab - Secure Database Connection Module
 
-$host = 'localhost';
-$db   = 'dmart_cyberlab';
-$user = 'root';
-$pass = '';
+// Uses environment variables when set (e.g. on Vercel), otherwise the XAMPP defaults.
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_NAME') ?: 'dmart_cyberlab';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$port = getenv('DB_PORT') ?: '3306';
 $charset = 'utf8mb4';
 
 require_once __DIR__ . '/security_mode.php';
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

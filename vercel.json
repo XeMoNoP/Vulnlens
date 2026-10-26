@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": "**/*.php"
+    }
+  },
+  "routes": [
+    { "src": "/(config|includes|database|docs|api)(/.*)?", "status": 404 },
+    { "src": "/(.*\\.(png|jpg|jpeg|gif|svg|webp|ico|css|js))", "dest": "/$1" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
+  ]
+}

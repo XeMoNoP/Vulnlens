@@ -8,13 +8,14 @@ function get_security_mode() {
     }
     
     try {
-        global $host, $db, $user, $pass;
+        global $host, $db, $user, $pass, $port;
         $db_host = $host ?? 'localhost';
         $db_name = $db ?? 'dmart_cyberlab';
         $db_user = $user ?? 'root';
         $db_pass = $pass ?? '';
+        $db_port = $port ?? '3306';
         
-        $dsn = "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4";
+        $dsn = "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4";
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_SILENT,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
