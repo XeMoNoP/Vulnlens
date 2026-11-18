@@ -120,7 +120,7 @@ def emit(name, color, strength):
     return m
 
 
-def livery(name, base, bands, direction, offset, scale, rough=0.18, coat=1.0, metal=0.0):
+def livery(name, base, bands, direction, offset, scale, rough=0.18, coat=1.0, metal=0.0, xmask=None):
     """Painted stripes: t = (dot(objcoord, direction) + offset) * scale -> constant ramp."""
     m = mat(name, base, rough=rough, coat=coat, metal=metal)
     nt = m.node_tree
@@ -141,8 +141,37 @@ def livery(name, base, bands, direction, offset, scale, rough=0.18, coat=1.0, me
     for pos, col in bands:
         e = els.new(pos); e.color = (*col, 1)
     nt.links.new(ma.outputs[0], ramp.inputs[0])
-    nt.links.new(ramp.outputs[0], b.inputs["Base Color"])
+    if xmask is None:
+        nt.links.new(ramp.outputs[0], b.inputs["Base Color"])
+        return m
+    # only print stripes where xmask[0] < x < xmask[1] (object space)
+    sx = nt.nodes.new('ShaderNodeSeparateXYZ')
+    nt.links.new(tc.outputs['Object'], sx.inputs[0])
+    g = nt.nodes.new('ShaderNodeMath'); g.operation = 'GREATER_THAN'; g.inputs[1].default_value = xmask[0]
+    l = nt.nodes.new('ShaderNodeMath'); l.operation = 'LESS_THAN'; l.inputs[1].default_value = xmask[1]
+    nt.links.new(sx.outputs['X'], g.inputs[0]); nt.links.new(sx.outputs['X'], l.inputs[0])
+    mm = nt.nodes.new('ShaderNodeMath'); mm.operation = 'MULTIPLY'
+    nt.links.new(g.outputs[0], mm.inputs[0]); nt.links.new(l.outputs[0], mm.inputs[1])
+    mix = nt.nodes.new('ShaderNodeMix'); mix.data_type = 'RGBA'
+    nt.links.new(mm.outputs[0], mix.inputs[0])
+    mix.inputs[6].default_value = (*base, 1)
+    nt.links.new(ramp.outputs[0], mix.inputs[7])
+    nt.links.new(mix.outputs[2], b.inputs["Base Color"])
     return m
+
+
+def fold_bump(m, scale, strength):
+    nt = m.node_tree
+    b = _principled(nt)
+    nz = nt.nodes.new('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = scale
+    nz.inputs['Detail'].default_value = 4
+    try:
+        nz.noise_type = 'RIDGED_MULTIFRACTAL'
+    except Exception:
+        pass
+    bp = nt.nodes.new('ShaderNodeBump'); bp.inputs['Strength'].default_value = strength
+    nt.links.new(nz.outputs['Fac'], bp.inputs['Height'])
+    nt.links.new(bp.outputs['Normal'], b.inputs['Normal'])
 
 
 def asphalt():
@@ -160,14 +189,14 @@ def asphalt():
     L.new(nz.outputs['Fac'], pm.inputs['Value'])
     # coat roughness: puddles mirror-like, rest streaky wet
     cr = nt.nodes.new('ShaderNodeMapRange')
-    cr.inputs['To Min'].default_value = 0.14; cr.inputs['To Max'].default_value = 0.05
+    cr.inputs['To Min'].default_value = 0.2; cr.inputs['To Max'].default_value = 0.07
     L.new(pm.outputs['Result'], cr.inputs['Value'])
     L.new(cr.outputs['Result'], b.inputs['Coat Roughness'])
     # base colour variation (aggregate)
-    vo = nt.nodes.new('ShaderNodeTexVoronoi'); vo.inputs['Scale'].default_value = 140
+    vo = nt.nodes.new('ShaderNodeTexVoronoi'); vo.inputs['Scale'].default_value = 70
     L.new(tc.outputs['Object'], vo.inputs['Vector'])
     bc = nt.nodes.new('ShaderNodeMapRange')
-    bc.inputs['To Min'].default_value = 0.008; bc.inputs['To Max'].default_value = 0.04
+    bc.inputs['To Min'].default_value = 0.006; bc.inputs['To Max'].default_value = 0.05
     L.new(vo.outputs['Distance'], bc.inputs['Value'])
     L.new(bc.outputs['Result'], b.inputs['Base Color'])
     # micro bump of the stones (coat keeps the geometric normal = water film)
@@ -179,7 +208,7 @@ def asphalt():
     L.new(vo.outputs['Distance'], bump.inputs['Height'])
     L.new(bump.outputs['Normal'], b.inputs['Normal'])
     # subtle undulation for the water film so reflections wobble & streak
-    bump2 = nt.nodes.new('ShaderNodeBump'); bump2.inputs['Strength'].default_value = 0.45
+    bump2 = nt.nodes.new('ShaderNodeBump'); bump2.inputs['Strength'].default_value = 0.8
     bump2.inputs['Distance'].default_value = 0.003
     L.new(vo.outputs['Distance'], bump2.inputs['Height'])
     L.new(bump2.outputs['Normal'], b.inputs['Coat Normal'])
@@ -404,9 +433,12 @@ def build():
     M['pin_red'] = mat("MAT_Pin_Red", (0.6, 0.02, 0.02), rough=0.3, coat=1)
     M['pin_blue'] = mat("MAT_Pin_Blue", (0.02, 0.2, 0.75), rough=0.3, coat=1)
     M['disc'] = mat("MAT_BrakeDisc", (0.6, 0.6, 0.62), rough=0.28, metal=1.0)
-    M['alu'] = mat("MAT_Alu_Dark", (0.3, 0.3, 0.32), rough=0.35, metal=1.0)
+    M['alu'] = mat("MAT_Alu_Dark", (0.16, 0.16, 0.17), rough=0.35, metal=1.0)
     M['engine'] = mat("MAT_Engine", (0.05, 0.05, 0.055), rough=0.4, metal=0.8)
-    M['ti'] = mat("MAT_Exhaust_Ti", (0.38, 0.36, 0.34), rough=0.3, metal=1.0)
+    M['ti'] = mat("MAT_Exhaust_Ti", (0.5, 0.48, 0.46), rough=0.3, metal=0.75)
+    M['chrome_lip'] = mat("MAT_Exhaust_Lip", (0.85, 0.85, 0.85), rough=0.12, metal=1.0)
+    M['bore'] = mat("MAT_Exhaust_Bore", (0.003, 0.003, 0.003), rough=0.8)
+    M['spring'] = mat("MAT_Shock_Spring", (0.6, 0.05, 0.03), rough=0.3, coat=1)
     M['carbon'] = mat("MAT_Carbon", (0.02, 0.02, 0.022), rough=0.2, coat=1.0)
     M['chrome'] = mat("MAT_MirrorGlass", (0.9, 0.9, 0.9), rough=0.02, metal=1.0)
     M['seat'] = mat("MAT_Seat", (0.01, 0.01, 0.01), rough=0.7)
@@ -420,12 +452,13 @@ def build():
                               (0.0, 0.25, 1.0), -0.70, 2.6)
     # rider
     M['shirt'] = livery("MAT_Rider_Tee", (0.006, 0.006, 0.007),
-                        [(0.22, (0.75, 0.75, 0.78)), (0.24, (0.03, 0.2, 0.68)), (0.44, (0.05, 0.06, 0.28)), (0.52, (0.65, 0.03, 0.05)),
-                         (0.57, (0.006, 0.006, 0.007))],
-                        (-2.0, 0.0, 1.0), -1.30, 2.4, rough=0.85, coat=0.0)
+                        [(0.20, (0.7, 0.7, 0.72)), (0.23, (0.03, 0.2, 0.68)), (0.50, (0.05, 0.06, 0.28)), (0.62, (0.65, 0.03, 0.05)),
+                         (0.70, (0.7, 0.7, 0.72)), (0.73, (0.006, 0.006, 0.007))],
+                        (-0.25, 0.0, 1.0), -1.18, 6.0, xmask=(-0.32, 0.03), rough=0.85, coat=0.0)
     _principled(M['shirt'].node_tree).inputs['Sheen Weight'].default_value = 0.05
     _principled(M['shirt'].node_tree).inputs['Specular IOR Level'].default_value = 0.2
-    M['jeans'] = mat("MAT_Rider_Jeans", (0.30, 0.32, 0.36), rough=0.85, sheen=0.4)
+    M['jeans'] = mat("MAT_Rider_Jeans", (0.23, 0.27, 0.33), rough=0.85, sheen=0.4)
+    fold_bump(M['jeans'], 9.0, 0.35)
     M['skin'] = mat("MAT_Rider_Skin", (0.2, 0.11, 0.07), rough=0.5)
     M['glove'] = mat("MAT_Rider_Glove", (0.015, 0.015, 0.015), rough=0.6)
     M['boot_white'] = mat("MAT_Boot_White", (0.75, 0.75, 0.76), rough=0.3, coat=0.5)
@@ -491,7 +524,6 @@ def build():
     mb.cyl((-0.15, 0, 0), (0.15, 0, 0), 0.03, m=M['alu'])
     # rear caliper + hugger
     mb.box(REAR_AX - PIVOT + Vector((0.10, 0.06, 0.08)), (0.03, 0.09, 0.05), M['alu'], rot=(-35, 0, 0))
-    mb.torus(REAR_AX - PIVOT, 0.37, 0.012, M['matte_black'], axis='X', axial=8.0, segs=24, rsegs=6, arc=(40, 120))
     mb.build("Swingarm", C_BIKE, bike, PIVOT, bevel=0.006)
 
     # frame + engine
@@ -515,6 +547,18 @@ def build():
     mb.box((-0.12, 0.62, 0.40), (0.04, 0.10, 0.18), M['alu'])
     mb.cyl((-0.12, 0.60, 0.34), (-0.20, 0.60, 0.34), 0.012, m=M['alu'])
     mb.box((0.0, 0.42, 0.55), (0.10, 0.08, 0.30), M['matte_black'], rot=(25, 0, 0))  # shock
+    # rear shock spring (visible between tail and swingarm)
+    for i in range(9):
+        z = 0.44 + i * 0.024
+        mb.torus((0, 0.42 + (z - 0.44) * 0.45, z), 0.038, 0.007, M['spring'], axis='Z', segs=20, rsegs=6)
+    # silver rear-set plates & heel guards (right side, catch the light)
+    mb.box((0.19, 0.58, 0.40), (0.008, 0.10, 0.07), M['disc'], rot=(-20, 0, 0))
+    mb.cyl((0.19, 0.50, 0.36), (0.19, 0.38, 0.30), 0.008, m=M['disc'])
+    # subframe side rails (silver) under the tail
+    for sx in (1, -1):
+        mb.beam((sx * 0.095, 0.62, 0.62), (sx * 0.075, 0.05, 0.80), 0.02, 0.025, M['disc'])
+    # chain guard / inner fender
+    mb.box((0.0, 0.18, 0.62), (0.16, 0.30, 0.02), M['matte_black'], rot=(-12, 0, 0))
     mb.build("Engine", C_BIKE, bike, bevel=0.012)
 
     # exhaust (right side, short underslung-side can, outlet faces rear)
@@ -522,9 +566,10 @@ def build():
     mb.cyl((0.08, 1.30, 0.40), (0.12, 1.24, 0.16), 0.024, m=M['ti'])
     mb.cyl((0.12, 1.24, 0.16), (0.12, 0.88, 0.14), 0.035, m=M['ti'])
     mb.cyl((0.12, 0.88, 0.14), (0.16, 0.66, 0.26), 0.04, m=M['ti'])
-    mb.cyl((0.165, 0.66, 0.27), (0.20, 0.34, 0.44), 0.07, 0.058, m=M['ti'], segs=6)
-    mb.cyl((0.20, 0.34, 0.44), (0.205, 0.31, 0.455), 0.058, 0.05, m=M['carbon'], segs=6)
-    mb.cyl((0.205, 0.30, 0.46), (0.208, 0.29, 0.465), 0.03, m=M['matte_black'], segs=16)
+    mb.cyl((0.165, 0.66, 0.27), (0.20, 0.34, 0.44), 0.085, 0.07, m=M['ti'], segs=32)
+    mb.cyl((0.20, 0.34, 0.44), (0.204, 0.322, 0.449), 0.07, 0.066, m=M['carbon'], segs=32)
+    mb.cyl((0.204, 0.322, 0.449), (0.206, 0.318, 0.451), 0.062, 0.062, m=M['chrome_lip'], segs=32)
+    mb.cyl((0.205, 0.320, 0.450), (0.200, 0.345, 0.437), 0.05, 0.03, m=M['bore'], segs=24)
     mb.beam((0.13, 0.50, 0.58), (0.19, 0.42, 0.43), 0.02, 0.03, M['alu'])
     mb.build("Exhaust", C_BIKE, bike)
 
@@ -534,7 +579,7 @@ def build():
     mb = MB(); mb.loft(tail, M['livery_tail'])
     mb.build("Body_Tail", C_BIKE, bike, subsurf=2)
     mb = MB()
-    mb.box((0, -0.128, 0.918), (0.11, 0.02, 0.028), M['tail_light'], smooth=False)
+    mb.box((0, -0.128, 0.915), (0.115, 0.02, 0.036), M['tail_light'], smooth=False)
     mb.build("TailLight", C_BIKE, bike)
     # licence plate hanger + lights
     mb = MB()
@@ -544,6 +589,9 @@ def build():
     for sx in (1, -1):
         mb.cyl((sx * 0.02, -0.16, 0.80), (sx * 0.07, -0.16, 0.805), 0.005, m=M['matte_black'])
         mb.box((sx * 0.075, -0.16, 0.805), (0.025, 0.018, 0.013), M['indicator'])
+    # long licence-plate / indicator arm reaching down-back (as in the reference)
+    mb.beam((0.02, -0.10, 0.80), (0.03, -0.27, 0.70), 0.03, 0.012, M['matte_black'])
+    mb.box((0.035, -0.285, 0.695), (0.05, 0.02, 0.02), M['matte_black'])
     mb.build("PlateHanger", C_BIKE, bike, bevel=0.003)
     # seat
     mb = MB(); mb.loft([sec(0.42, 0.86, 0.12, 0.04), sec(0.62, 0.85, 0.15, 0.045), sec(0.84, 0.86, 0.16, 0.04)], M['seat'])
@@ -592,18 +640,18 @@ def build():
         mb.sphere(Vector(g) + Vector((0, -0.01, 0.01)), 0.05, M['glove'], scale=(0.9, 1.2, 0.8))
     mb.build("Rider_Gloves", C_RIDER, rider)
     skin_object("Rider_Jeans", C_RIDER, [
-        [((0, 0.47, 0.92), 0.11), ((0.11, 0.47, 0.92), 0.115), ((0.30, 0.90, 0.62), 0.075), ((0.33, 0.93, 0.36), 0.06)],
+        [((0, 0.47, 0.92), 0.11), ((0.11, 0.47, 0.92), 0.115), ((0.28, 0.86, 0.62), 0.075), ((0.265, 0.885, 0.37), 0.06)],
         [((0, 0.47, 0.92), 0.11), ((-0.11, 0.47, 0.92), 0.115), ((-0.27, 0.83, 0.70), 0.075), ((-0.22, 0.62, 0.44), 0.06)],
     ], M['jeans'], parent=rider)
     skin_object("Rider_Boots", C_RIDER, [
-        [((0.335, 0.935, 0.41), 0.066), ((0.345, 0.93, 0.11), 0.056), ((0.36, 1.07, 0.05), 0.047), ((0.365, 1.14, 0.04), 0.035)],
-        [((0.345, 0.93, 0.11), 0.056), ((0.345, 0.87, 0.05), 0.045)],
+        [((0.27, 0.885, 0.42), 0.078), ((0.235, 0.88, 0.12), 0.066), ((0.24, 1.02, 0.055), 0.055), ((0.24, 1.10, 0.045), 0.04)],
+        [((0.235, 0.88, 0.12), 0.066), ((0.235, 0.81, 0.055), 0.05)],
         [((-0.22, 0.625, 0.47), 0.066), ((-0.205, 0.58, 0.36), 0.056), ((-0.20, 0.72, 0.34), 0.045)],
     ], M['boot_white'], parent=rider)
     mb = MB()
-    mb.box((0.36, 1.00, 0.012), (0.10, 0.30, 0.024), M['boot_black'], smooth=False)       # sole
-    mb.box((0.39, 0.94, 0.16), (0.012, 0.09, 0.14), M['boot_black'], rot=(10, 0, 0))     # outer slider panel
-    mb.box((0.393, 0.91, 0.33), (0.010, 0.05, 0.04), M['boot_red'])
+    mb.box((0.238, 0.95, 0.012), (0.10, 0.30, 0.024), M['boot_black'], smooth=False)       # sole
+    mb.box((0.305, 0.89, 0.19), (0.014, 0.11, 0.18), M['boot_black'], rot=(10, 0, -4))     # outer slider panel
+    mb.box((0.30, 0.87, 0.34), (0.010, 0.05, 0.04), M['boot_red'])
     mb.build("Rider_Boot_Details", C_RIDER, rider, bevel=0.004)
     HEAD = Vector((0, 0.89, 1.50))
     mb = MB()
@@ -678,8 +726,8 @@ def build():
     mb.build("BG_Shop_StringLights", C_BG)
     mb = MB()
     for (x0, y0, x1, y1, col, s) in [
-        (430, 415, 478, 445, (1, 0.08, 0.06), 10), (472, 418, 495, 440, (0.6, 0.8, 1.0), 18),
-        (380, 470, 430, 500, (1, 0.3, 0.4), 6), (420, 500, 470, 520, (1, 0.05, 0.05), 7),
+        (430, 415, 478, 445, (1, 0.03, 0.02), 16), (472, 418, 495, 440, (0.6, 0.8, 1.0), 18),
+        (380, 470, 430, 500, (1, 0.15, 0.3), 9), (420, 500, 470, 520, (1, 0.02, 0.02), 12),
         (380, 520, 400, 535, (0.2, 1, 0.7), 6), (440, 460, 560, 560, (1, 0.6, 0.35), 2.5),
         (560, 380, 600, 400, (1, 0.8, 0.5), 8), (620, 440, 700, 455, (1, 0.8, 0.55), 6),
         (330, 470, 360, 510, (1, 0.55, 0.3), 5)]:
@@ -793,6 +841,19 @@ def build():
     tg = light("LGT_TailLight_Glow", C_LGT, 'SPOT', Vector((0, -0.16, 0.90)), 90, (1.0, 0.02, 0.01), size=0.04,
                spot=170, parent=bike)
     tg.rotation_euler = (math.radians(-50), 0, 0)  # pointing back & down (local -Z rotated toward -Y)
+    # warm kicker from front-right: picks out exhaust, swingarm, boot, tyre shoulder
+    bpy.context.view_layer.update()
+    kick_t = bike.matrix_world @ Vector((0.2, 0.4, 0.45))
+    light("LGT_Kicker_Right", C_LGT, 'AREA', bike.matrix_world @ Vector((2.2, 1.4, 1.1)), 95, (1.0, 0.6, 0.32),
+          size=0.8, target=kick_t)
+    # tail glow is a cheat for the wet-road red bloom: only lights the road
+    rc = bpy.data.collections.new("LINK_TailGlow_Receivers")
+    for n in ("Road_Asphalt", "Road_LaneMarking"):
+        rc.objects.link(bpy.data.objects[n])
+    try:
+        tg.light_linking.receiver_collection = rc
+    except Exception as e:
+        print("LIGHT LINKING FAILED", e)
     for n in ("LGT_Fill_BehindCamera", "LGT_SkyBounce", "LGT_Rim_ShopSpill"):
         bpy.data.objects[n].visible_glossy = False
     bloom(scn)
@@ -821,7 +882,7 @@ def build():
     vs = scn.view_settings
     try:
         vs.view_transform = 'AgX'
-        vs.look = 'AgX - Medium High Contrast'
+        vs.look = 'AgX - Punchy'
     except Exception:
         pass
     try:
