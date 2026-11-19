@@ -36,3 +36,6 @@ next-env.d.ts
 .data/
 
 .vercel
+
+# Motion design reference repositories (cloned, not ours)
+PROLLYATYP0_MOTION_DESIGN/REFERENCES/

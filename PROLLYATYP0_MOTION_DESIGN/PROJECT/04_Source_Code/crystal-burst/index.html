@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Burst · Prollyatyp0</title>
+<style>
+  html, body { margin: 0; background: #E8E6E1; }
+  .demo-next { min-height: 70vh; padding: 96px clamp(16px, 6vw, 104px); font-family: "Inter Tight", system-ui, sans-serif; color: #0B0B0B; }
+  .demo-next h2 { font-size: clamp(40px, 8vw, 112px); font-weight: 800; letter-spacing: -.04em; margin: 8px 0 0; }
+  .demo-next p { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #6F6C66; margin: 0; }
+</style>
+</head>
+<body>
+
+<div id="crystal-burst"></div>
+<script type="module">
+  import { mountCrystalBurst } from './crystal-burst-engine.js?v=12';
+  window.crystalBurst = await mountCrystalBurst(document.getElementById('crystal-burst'), {
+    model: 'assets/crystal_asterisk.glb',
+    poster: 'assets/poster.jpg',
+    mode: 'scroll',          // 'scroll' | 'autoplay' | 'auto'
+    headline: '',            // e.g. 'Prollyatyp0' to put big type behind the crystal
+  });
+</script>
+
+<section class="demo-next">
+  <p>Next section</p>
+  <h2>SaaS · AR/VR · UI/UX</h2>
+</section>
+
+</body>
+</html>

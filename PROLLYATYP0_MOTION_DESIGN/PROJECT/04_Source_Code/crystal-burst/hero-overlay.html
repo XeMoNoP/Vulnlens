@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Burst · live-site setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #E8E6E1; color: #0B0B0B; overflow-x: hidden; font-family: "Inter Tight", system-ui, sans-serif; }
+  /* Stand-in for the live page. It uses the live site's section classes (a12-hero, a12-about, a12-disc, a12-works, a12-ct),
+     so the crystal's default journey lines up exactly as it will on the real page. Heights match the live page. */
+  .a12-hero { position: relative; height: 100vh; overflow: hidden; }
+  .marquee { position: absolute; top: 50%; left: 0; transform: translateY(-50%); white-space: nowrap;
+    font: 800 clamp(120px, 18vw, 300px)/1 "Inter Tight", system-ui, sans-serif; letter-spacing: -.05em;
+    animation: slide 40s linear infinite; }
+  @keyframes slide { to { transform: translate(-50%, -50%); } }
+  .a12-about { min-height: 93vh; padding: 12vh clamp(16px, 6vw, 104px); box-sizing: border-box; }
+  .a12-about h2 { font-size: clamp(28px, 3.6vw, 56px); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; max-width: 16ch; margin: 0 0 32px; text-transform: uppercase; }
+  .a12-about p { max-width: 46ch; font-size: 15px; line-height: 1.55; color: #3b3a37; }
+  .a12-disc { height: 600vh; position: relative; }
+  .a12-disc .pin, .a12-works .pin { position: sticky; top: 0; height: 100vh; display: grid; place-items: center;
+    font-size: clamp(60px, 10vw, 160px); font-weight: 800; letter-spacing: -.04em; }
+  .a12-works { height: 930vh; position: relative; }
+  .a12-works .pin { grid-template-columns: 1fr 1fr; gap: 6vw; padding: 0 6vw; box-sizing: border-box; font-size: clamp(40px, 6vw, 96px); }
+  .a12-works .img { aspect-ratio: 4/3; background: linear-gradient(135deg,#1b1424,#5a3b6e 55%,#d9b58a); border-radius: 2px; }
+  .a12-ct { height: 115vh; display: grid; align-content: center; padding: 0 6vw; font-size: clamp(80px, 16vw, 260px); font-weight: 800; letter-spacing: -.05em; line-height: .9; }
+  /* the crystal layer: fixed, full screen, never blocks clicks on the page */
+  #crystal { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+</style>
+</head>
+<body>
+<section class="a12-hero">
+  <div class="marquee">brands with character. products with purpose. brands with character. products with purpose.</div>
+</section>
+<section class="a12-about">
+  <h2>We design and build brands and products that stay with you</h2>
+  <p>Prollyatyp0 is an independent creative and technology studio working across design, branding, ecommerce, SaaS and AI.
+     From the first idea to the final interaction, we work with founders and teams as one studio.</p>
+</section>
+<section class="a12-disc"><div class="pin">DESIGN · SAAS · ECOMMERCE</div></section>
+<section class="a12-works"><div class="pin"><div>CUP RITUALS</div><div class="img"></div></div></section>
+<section class="a12-ct">SAY<br>HELLO</section>
+
+<div id="crystal"></div>
+<script type="module">
+  import { mountCrystalBurst } from './crystal-burst-engine.js?v=71';
+  window.crystalBurst = await mountCrystalBurst(document.getElementById('crystal'), {
+    model: 'assets/crystal_asterisk.glb',
+    mode: 'interactive',
+    transparent: true,       // page text shows through
+    sound: false,
+    scrollFollow: true,      // full top-to-bottom journey of the live site, ends with the pieces joining again
+    reformAt: 'right',       // beside "Say hello", like the live site
+    onEnter: () => console.log('enter: open the case study'),
+  });
+</script>
+</body>
+</html>

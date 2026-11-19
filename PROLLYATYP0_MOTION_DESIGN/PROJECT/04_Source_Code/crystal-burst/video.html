@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Burst · video render</title>
+<style>
+  html, body { margin: 0; background: #E8E6E1; overflow-x: hidden; scrollbar-width: none; }
+  ::-webkit-scrollbar { display: none; }
+  /* invisible stand-ins with the live page's section classes and heights, so the scroll journey is timed
+     exactly as on the site; only the crystal canvas (opaque paper) is recorded */
+  .a12-hero { height: 100vh; } .a12-about { height: 93vh; } .a12-disc { height: 600vh; }
+  .a12-works { height: 930vh; } .a12-ct { height: 115vh; }
+  #crystal { position: fixed; inset: 0; z-index: 5; }
+</style>
+</head>
+<body>
+<section class="a12-hero"></section><section class="a12-about"></section><section class="a12-disc"></section>
+<section class="a12-works"></section><section class="a12-ct"></section>
+<div id="crystal"></div>
+<script type="module">
+  import { mountCrystalBurst } from './crystal-burst-engine.js?v=video1';
+  window.crystalBurst = await mountCrystalBurst(document.getElementById('crystal'), {
+    model: 'assets/crystal_asterisk.glb?v=video1',
+    mode: 'interactive',
+    transparent: false,
+    sound: false,
+    hint: false,
+  });
+  window.crystalReady = true;
+</script>
+</body>
+</html>

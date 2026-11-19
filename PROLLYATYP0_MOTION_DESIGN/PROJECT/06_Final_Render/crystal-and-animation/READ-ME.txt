@@ -1,0 +1,17 @@
+Prollyatyp0 · Crystal asterisk + its animation
+
+crystal_asterisk.glb      the crystal (3D model of the logo: whole + 20 pieces)
+crystal-burst-engine.js   the animation (hover burst + portal, the full scroll journey, rejoin at the end)
+crystal-burst-embed.html  both in one file - paste it into the page as-is
+
+Use it:
+  <div id="crystal" style="position:fixed;inset:0;pointer-events:none;z-index:5"></div>
+  <script type="module">
+    import { mountCrystalBurst } from './crystal-burst-engine.js';
+    mountCrystalBurst(document.getElementById('crystal'), {
+      model: './crystal_asterisk.glb', mode: 'interactive', transparent: true,
+      onEnter: () => { /* open the case study */ },
+    });
+  </script>
+
+Serve over http(s) (not file://). Full guide: README.md in the developer handoff package.

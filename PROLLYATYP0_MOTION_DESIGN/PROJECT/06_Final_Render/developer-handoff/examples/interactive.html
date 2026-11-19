@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Burst · interactive</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #E8E6E1; overflow-x: hidden; }
+  #crystal { height: 100vh; height: 100svh; }
+</style>
+</head>
+<body>
+<div id="crystal"></div>
+<script type="module">
+  import { mountCrystalBurst } from '../crystal-burst-engine.js';
+  window.crystalBurst = await mountCrystalBurst(document.getElementById('crystal'), {
+    model: '../assets/crystal_asterisk.glb',
+    poster: '../assets/poster.jpg',
+    mode: 'interactive',
+    onEnter: () => alert('enter: open the case study here'),
+  });
+</script>
+</body>
+</html>

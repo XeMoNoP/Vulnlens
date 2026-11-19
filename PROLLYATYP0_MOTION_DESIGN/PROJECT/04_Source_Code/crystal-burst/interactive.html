@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Burst · interactive</title>
+<style>
+  html, body { margin: 0; background: #E8E6E1; }
+  #hero { position: relative; height: 100vh; height: 100svh; }
+  #log { position: fixed; left: 16px; top: 16px; font: 500 12px system-ui; letter-spacing: .1em; text-transform: uppercase; color: #6F6C66; }
+</style>
+</head>
+<body>
+<div id="hero"></div>
+<p id="log">Hover the crystal · click it when open</p>
+<script type="module">
+  import { mountCrystalBurst } from './crystal-burst-engine.js?v=23';
+  const log = document.getElementById('log');
+  window.crystalBurst = await mountCrystalBurst(document.getElementById('hero'), {
+    model: 'assets/crystal_asterisk.glb',
+    poster: 'assets/poster.jpg',
+    mode: 'interactive',
+    onOpen: () => { log.textContent = 'open'; },
+    onClose: () => { log.textContent = 'closed'; },
+    onEnter: () => { log.textContent = 'enter → open the case study here'; },
+  });
+</script>
+</body>
+</html>
