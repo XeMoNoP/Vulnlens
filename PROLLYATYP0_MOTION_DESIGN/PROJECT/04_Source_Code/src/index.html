@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Prollyatyp0 Services Film — Precision Cut</title>
+<style>
+  @font-face { font-family: "Inter Tight"; src: url(../../03_Assets/fonts/inter-tight-latin-wght-normal.woff2) format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Inter"; src: url(../../03_Assets/fonts/inter-latin-wght-normal.woff2) format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "JetBrains Mono"; src: url(../../03_Assets/fonts/jetbrains-mono-latin-wght-normal.woff2) format("woff2"); font-weight: 100 800; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0B0B0B; transform-origin: 0 0;
+           font-family: Inter, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+  #stage .layer { position: absolute; inset: 0; overflow: hidden; }
+  #gl { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+  #ui { position: fixed; left: 8px; bottom: 8px; color: #fff; font: 12px monospace; z-index: 99; background: rgba(0,0,0,.6); padding: 4px 8px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../node_modules/three/build/three.module.js",
+  "three/addons/": "../node_modules/three/examples/jsm/"
+} }
+</script>
+<script src="../../03_Assets/logo/logo-data.js"></script>
+<script src="../node_modules/gsap/dist/gsap.min.js"></script>
+</head>
+<body>
+<div id="stage">
+  <div id="bg" class="layer"></div>
+  <canvas id="gl" width="1920" height="1080"></canvas>
+</div>
+<div id="ui"></div>
+<script type="module" src="film.js"></script>
+</body>
+</html>

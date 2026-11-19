@@ -36,3 +36,12 @@ next-env.d.ts
 .data/
 
 .vercel
+
+# motion design reference clones (kept out of source control)
+/PROLLYATYP0_MOTION_DESIGN/REFERENCES/
+
+# motion design build output and deps
+PROLLYATYP0_MOTION_DESIGN/**/node_modules/
+PROLLYATYP0_MOTION_DESIGN/PROJECT/05_Preview/*.mp4
+PROLLYATYP0_MOTION_DESIGN/PROJECT/06_Final_Render/*.mp4
+PROLLYATYP0_MOTION_DESIGN/PROJECT/05_Preview/frames/

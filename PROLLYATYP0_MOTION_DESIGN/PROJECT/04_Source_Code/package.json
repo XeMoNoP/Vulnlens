@@ -1,0 +1,21 @@
+{
+  "name": "prollyatyp0-services-film",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prollyatyp0 Services Film 'Precision Cut' — 15 s, 1920x1080, 60 fps. Every frame is a pure function of time.",
+  "scripts": {
+    "stills": "node scripts/render.mjs --stills",
+    "preview": "node scripts/render.mjs --preview",
+    "audio": "node scripts/render.mjs --audio-only",
+    "render": "node scripts/render.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.1.0",
+    "@fontsource-variable/inter-tight": "5.1.0",
+    "@fontsource-variable/jetbrains-mono": "5.1.0",
+    "gsap": "3.12.5",
+    "puppeteer-core": "23.11.1",
+    "three": "0.170.0"
+  }
+}
